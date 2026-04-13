@@ -5,7 +5,7 @@ Admin portal skeleton built with [web-mojo](https://github.com/NativeMojo/web-mo
 ## Quick Start
 
 ```bash
-git clone --depth 1 https://github.com/NativeMojo/web-mojo-portal-skeleton.git my-portal && cd my-portal && rm -rf .git && git init
+git clone --depth 1 https://github.com/NativeMojo/web-mojo-portal-skeleton.git portal && cd portal && rm -rf .git && git init
 ```
 
 ```bash

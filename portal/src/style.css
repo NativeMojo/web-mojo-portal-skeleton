@@ -1,0 +1,14 @@
+/*
+ * Portal Custom Styles
+ * Add your project-specific overrides here.
+ * Bootstrap 5 + web-mojo CSS are loaded globally via index.html.
+ */
+
+/* Dashboard stat cards */
+.dashboard-container .card {
+  transition: transform 0.15s ease;
+}
+
+.dashboard-container .card:hover {
+  transform: translateY(-2px);
+}

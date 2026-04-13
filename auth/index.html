@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login</title>
+    <link rel="stylesheet" href="mojo-auth.css" />
+</head>
+<body>
+    <!--
+        Standalone Login Page
+        =====================
+        This page uses mojo-auth.js (a vanilla JS library) to authenticate
+        against a django-mojo backend. It runs on the SAME origin as the
+        portal (served by Vite in dev), so localStorage is shared — no
+        cross-origin token issues.
+
+        mojo-auth.js supports: login, forgot password (code/link), magic
+        links, passkeys (WebAuthn), and OAuth (Google/Apple). This skeleton
+        shows username/password login. See the commented sections below
+        for how to enable additional auth methods.
+    -->
+
+    <!-- Full-screen overlay — shown during session check and post-login redirect -->
+    <div id="ma-overlay" class="ma-overlay" aria-live="polite" aria-label="Authenticating">
+        <div class="ma-overlay-card">
+            <div class="ma-overlay-spinner"></div>
+            <p class="ma-overlay-title" id="ma-overlay-title">Checking session...</p>
+            <p class="ma-overlay-sub" id="ma-overlay-sub">Please wait</p>
+        </div>
+    </div>
+
+    <div class="ma-page">
+        <div class="ma-card">
+            <!-- Header -->
+            <div class="ma-header" id="ma-header">
+                <div class="ma-brand-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 1L3 5v6c0 5.25 3.75 10.15 9 11.35C17.25 21.15 21 16.25 21 11V5l-9-4zm-1 14l-3-3 1.41-1.41L11 12.17l4.59-4.58L17 9l-6 6z"/>
+                    </svg>
+                </div>
+                <div class="ma-header-text">
+                    <h1 class="ma-title" id="ma-title">My Portal</h1>
+                    <p class="ma-subtitle" id="ma-subtitle">Sign in to your account</p>
+                </div>
+            </div>
+
+            <!-- Status message — shown/hidden by JS -->
+            <div id="ma-message" class="ma-message" role="alert"></div>
+
+            <!-- ================================================================
+                 VIEW: Sign In
+                 ================================================================ -->
+            <div id="view-signin" class="ma-view is-active">
+                <form id="form-signin" novalidate>
+                    <div class="ma-field">
+                        <label class="ma-label" for="signin-username">Email or Username</label>
+                        <div class="ma-input-wrap">
+                            <svg class="ma-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                            <input class="ma-input" type="text" id="signin-username" autocomplete="username" placeholder="you@example.com" required />
+                        </div>
+                    </div>
+                    <div class="ma-field">
+                        <label class="ma-label" for="signin-password">Password</label>
+                        <div class="ma-input-wrap">
+                            <svg class="ma-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="3" y="11" width="18" height="11" rx="2" />
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                            <input class="ma-input has-eye" type="password" id="signin-password" autocomplete="current-password" placeholder="Enter password" required />
+                            <button type="button" class="ma-eye" aria-label="Show password" data-target="signin-password">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button class="ma-btn ma-btn-primary" type="submit" id="btn-signin">
+                        <span class="ma-btn-text">Sign In</span>
+                        <span class="ma-spinner"></span>
+                    </button>
+                </form>
+
+                <!--
+                    ============================================================
+                    OPTIONAL: OAuth, Passkeys, Forgot Password, Magic Links
+                    ============================================================
+                    Uncomment any of the sections below to enable additional
+                    auth methods. Each one is self-contained — just uncomment
+                    the HTML here and the matching JS handler at the bottom.
+
+                    OAuth (Google/Apple):
+                    ─────────────────────
+                    Requires OAuth credentials configured in your django-mojo
+                    backend. See django-mojo docs for setup.
+
+                <div class="ma-divider">or continue with</div>
+                <div class="ma-oauth-row">
+                    <button class="ma-btn ma-btn-outline" type="button" id="btn-google">
+                        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                            <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2v6h7.8c4.5-4.2 7.1-10.3 7.1-17.2z"/>
+                            <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.8-6c-2.1 1.4-4.8 2.3-8.1 2.3-6.2 0-11.5-4.2-13.4-9.9H2.6v6.2C6.5 42.7 14.7 48 24 48z"/>
+                            <path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.7-2.9-.7-4.6s.3-3.2.7-4.6v-6.2H2.6C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l8-6.2z"/>
+                            <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.5l6.8-6.8C35.9 2.1 30.5 0 24 0 14.7 0 6.5 5.3 2.6 13.2l8 6.2C12.5 13.7 17.8 9.5 24 9.5z"/>
+                        </svg>
+                        <span class="ma-btn-text">Google</span>
+                        <span class="ma-spinner"></span>
+                    </button>
+                    <button class="ma-btn ma-btn-outline" type="button" id="btn-apple">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.53-3.23 0-1.44.62-2.2.44-3.06-.4C3.79 16.17 4.36 9.04 8.93 8.78c1.27.07 2.16.72 2.91.77.99-.2 1.94-.78 3-.84 1.28-.08 2.24.38 2.87 1.14-2.63 1.56-2.01 4.98.45 5.94-.52 1.4-1.21 2.78-2.11 4.49zM12.03 8.7c-.13-2.28 1.73-4.2 3.93-4.4.31 2.56-2.31 4.5-3.93 4.4z"/>
+                        </svg>
+                        <span class="ma-btn-text">Apple</span>
+                        <span class="ma-spinner"></span>
+                    </button>
+                    <button class="ma-btn ma-btn-passkey" type="button" id="btn-passkey" style="display:none">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/>
+                            <path d="M5 19.5C5.5 14 8 10 12 10c2.5 0 4.5 1.5 5 4"/>
+                            <path d="M8 21c.5-3.5 2-6 4-6 1.5 0 2.5 1 2.5 3v4"/>
+                            <path d="M17.5 15c1.5 1 2.5 3 2.5 6"/>
+                            <path d="M22 12c0 3-1 5.5-2.5 7.5"/>
+                        </svg>
+                        <span class="ma-btn-text">Passkey</span>
+                        <span class="ma-spinner"></span>
+                    </button>
+                </div>
+
+                    Forgot Password / Magic Link:
+                    ──────────────────────────────
+                <div class="ma-footer-links">
+                    <span class="ma-footer-link"><button type="button" id="link-forgot">Forgot password?</button></span>
+                    <span class="ma-footer-link"><button type="button" id="link-magic">Email me a link</button></span>
+                </div>
+                -->
+            </div>
+
+            <!--
+                ================================================================
+                OPTIONAL VIEWS: Forgot Password, Reset Code, Magic Link
+                ================================================================
+                Uncomment these views and their JS handlers below to enable
+                the full password reset and magic link flows.
+
+            <div id="view-forgot" class="ma-view">
+                <button class="ma-back" type="button" id="btn-back-signin">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                    Back
+                </button>
+                <p class="ma-view-title">Reset Your Password</p>
+                <p class="ma-view-sub">We'll email you a 6-digit code to reset your password.</p>
+                <form id="form-forgot" novalidate>
+                    <div class="ma-field">
+                        <label class="ma-label" for="forgot-email">Email Address</label>
+                        <div class="ma-input-wrap">
+                            <svg class="ma-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                            <input class="ma-input" type="email" id="forgot-email" autocomplete="email" placeholder="you@example.com" required />
+                        </div>
+                    </div>
+                    <button class="ma-btn ma-btn-primary" type="submit" id="btn-forgot">
+                        <span class="ma-btn-text">Send Reset Code</span>
+                        <span class="ma-spinner"></span>
+                    </button>
+                </form>
+            </div>
+
+            <div id="view-reset-code" class="ma-view">
+                <button class="ma-back" type="button" id="btn-back-forgot">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                    Back
+                </button>
+                <p class="ma-view-title">Enter Reset Code</p>
+                <p class="ma-view-sub">We sent a 6-digit code to <strong id="reset-email-display"></strong></p>
+                <form id="form-reset-code" novalidate>
+                    <div class="ma-field">
+                        <label class="ma-label" for="reset-code">Reset Code</label>
+                        <div class="ma-input-wrap">
+                            <input class="ma-input" type="text" id="reset-code" autocomplete="one-time-code" placeholder="123456" inputmode="numeric" pattern="\d*" required />
+                        </div>
+                    </div>
+                    <div class="ma-field">
+                        <label class="ma-label" for="reset-password-new">New Password</label>
+                        <div class="ma-input-wrap">
+                            <input class="ma-input" type="password" id="reset-password-new" autocomplete="new-password" placeholder="New password" required />
+                        </div>
+                    </div>
+                    <div class="ma-field">
+                        <label class="ma-label" for="reset-password-confirm">Confirm Password</label>
+                        <div class="ma-input-wrap">
+                            <input class="ma-input" type="password" id="reset-password-confirm" autocomplete="new-password" placeholder="Confirm password" required />
+                        </div>
+                    </div>
+                    <button class="ma-btn ma-btn-primary" type="submit" id="btn-reset-code">
+                        <span class="ma-btn-text">Reset Password</span>
+                        <span class="ma-spinner"></span>
+                    </button>
+                </form>
+            </div>
+
+            <div id="view-magic" class="ma-view">
+                <button class="ma-back" type="button" id="btn-back-signin-magic">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                    Back
+                </button>
+                <p class="ma-view-title">Magic Login Link</p>
+                <p class="ma-view-sub">We'll email you a link to sign in instantly &mdash; no password needed.</p>
+                <form id="form-magic" novalidate>
+                    <div class="ma-field">
+                        <label class="ma-label" for="magic-email">Email Address</label>
+                        <div class="ma-input-wrap">
+                            <svg class="ma-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                            <input class="ma-input" type="email" id="magic-email" autocomplete="email" placeholder="you@example.com" required />
+                        </div>
+                    </div>
+                    <button class="ma-btn ma-btn-primary" type="submit" id="btn-magic">
+                        <span class="ma-btn-text">Send Login Link</span>
+                        <span class="ma-spinner"></span>
+                    </button>
+                </form>
+            </div>
+            -->
+        </div>
+    </div>
+
+    <!--
+        In dev, Vite serves auth/mojo-auth.js from the project root.
+        In production builds, it's copied from public/auth/mojo-auth.js.
+        Both resolve to the same /auth/mojo-auth.js path.
+    -->
+    <script src="mojo-auth.js"></script>
+
+    <script>
+    (function () {
+        // =====================================================================
+        // Config
+        // =====================================================================
+        // In dev mode, this page is served by Vite on the same origin as the
+        // portal, so localStorage is shared. The API base points to your
+        // django-mojo backend (local or remote).
+
+        var IS_DEV = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        var API_BASE = IS_DEV ? 'http://localhost:9009' : 'https://api.example.com';
+        // TODO: In production, set API_BASE to your real API URL above.
+
+        // Where to go after successful login
+        var ON_SUCCESS = '/portal/';
+
+        // Read ?redirect= param (set by init.js when redirecting here)
+        var params = new URLSearchParams(location.search);
+        var paramRedirect = params.get('redirect') || params.get('next') || '';
+        var redirectTo = (paramRedirect && paramRedirect.charAt(0) === '/') ? paramRedirect : ON_SUCCESS;
+
+        // =====================================================================
+        // Init
+        // =====================================================================
+        MojoAuth.init({ baseURL: API_BASE });
+
+        // DOM refs
+        var $ = function (id) { return document.getElementById(id); };
+
+        var overlay = $('ma-overlay');
+        var overlayTitle = $('ma-overlay-title');
+        var overlaySub = $('ma-overlay-sub');
+
+        // =====================================================================
+        // Helpers
+        // =====================================================================
+        function showMessage(text, type) {
+            var el = $('ma-message');
+            el.textContent = text;
+            el.className = 'ma-message is-visible is-' + (type || 'info');
+        }
+
+        function hideMessage() {
+            var el = $('ma-message');
+            el.className = 'ma-message';
+            el.textContent = '';
+        }
+
+        function setLoading(btn, loading) {
+            btn.classList.toggle('is-loading', !!loading);
+            btn.disabled = !!loading;
+        }
+
+        function showOverlay(title, sub) {
+            overlayTitle.textContent = title || 'Please wait...';
+            overlaySub.textContent = sub || '';
+            overlay.classList.add('is-visible');
+        }
+
+        function redirect() {
+            window.location.href = redirectTo;
+        }
+
+        function onAuthSuccess() {
+            showOverlay('Signed in!', 'Taking you there now...');
+            setTimeout(redirect, 800);
+        }
+
+        // =====================================================================
+        // Session check — if user already has a refresh token, try to use it
+        // =====================================================================
+        (function checkExistingSession() {
+            // Skip if we're handling a callback (magic link, OAuth, etc.)
+            if (params.get('token') || (params.get('code') && params.get('state'))) return;
+
+            var refreshToken = MojoAuth.getRefreshToken();
+            if (!refreshToken) return;
+
+            showOverlay('Checking session...', 'Verifying your credentials');
+            MojoAuth.refreshToken()
+                .then(function () {
+                    showOverlay('Signed in!', 'Taking you there now...');
+                    setTimeout(redirect, 800);
+                })
+                .catch(function () {
+                    // Refresh failed — clear stale tokens and show login form
+                    MojoAuth.logout();
+                    overlay.classList.remove('is-visible');
+                });
+        })();
+
+        // =====================================================================
+        // URL token handling — magic links and password reset links
+        // =====================================================================
+        (function handleURLTokens() {
+            var token = params.get('token');
+            if (!token) return;
+
+            // Magic login link: ?token=ml:...
+            if (token.indexOf('ml:') === 0) {
+                showOverlay('Signing in...', 'Verifying your magic link');
+                MojoAuth.loginWithMagicToken(token)
+                    .then(function () {
+                        params.delete('token');
+                        var clean = params.toString() ? location.pathname + '?' + params.toString() : location.pathname;
+                        history.replaceState({}, '', clean);
+                        onAuthSuccess();
+                    })
+                    .catch(function (err) {
+                        params.delete('token');
+                        history.replaceState({}, '', location.pathname);
+                        overlay.classList.remove('is-visible');
+                        showMessage(MojoAuth.getError(err) || 'Invalid or expired login link.', 'error');
+                    });
+                return;
+            }
+
+            // Password reset link: ?token=pr:...
+            // (requires the optional reset views to be uncommented)
+            if (token.indexOf('pr:') === 0) {
+                console.log('Password reset token received. Uncomment the reset views to handle it.');
+            }
+        })();
+
+        // =====================================================================
+        // OAuth callback — if redirected back with ?code=...&state=...
+        // =====================================================================
+        (function handleOAuthCallback() {
+            if (!params.get('code') || !params.get('state')) return;
+            var provider = sessionStorage.getItem('oauth_provider') || 'google';
+            sessionStorage.removeItem('oauth_provider');
+            showOverlay('Completing sign-in...', '');
+            MojoAuth.completeOAuthLogin(provider)
+                .then(onAuthSuccess)
+                .catch(function (err) {
+                    overlay.classList.remove('is-visible');
+                    showMessage(MojoAuth.getError(err) || 'OAuth sign-in failed.', 'error');
+                });
+        })();
+
+        // =====================================================================
+        // Sign In form
+        // =====================================================================
+        $('form-signin').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var username = $('signin-username').value.trim();
+            var password = $('signin-password').value;
+            if (!username || !password) {
+                showMessage('Please enter your username and password.', 'error');
+                return;
+            }
+            var btn = $('btn-signin');
+            setLoading(btn, true);
+            hideMessage();
+            MojoAuth.login(username, password)
+                .then(function (data) {
+                    if (data && data.mfa_required) {
+                        showMessage('MFA required — not yet implemented in this example.', 'info');
+                        setLoading(btn, false);
+                        return;
+                    }
+                    onAuthSuccess();
+                })
+                .catch(function (err) {
+                    setLoading(btn, false);
+                    showMessage(MojoAuth.getError(err) || 'Invalid credentials.', 'error');
+                });
+        });
+
+        // =====================================================================
+        // Password visibility toggle
+        // =====================================================================
+        document.querySelectorAll('.ma-eye').forEach(function (eyeBtn) {
+            eyeBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var input = document.getElementById(eyeBtn.dataset.target);
+                if (!input) return;
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    eyeBtn.setAttribute('aria-label', 'Hide password');
+                } else {
+                    input.type = 'password';
+                    eyeBtn.setAttribute('aria-label', 'Show password');
+                }
+            });
+        });
+
+        /*
+        // =================================================================
+        // OPTIONAL: OAuth button handlers
+        // =================================================================
+        // Uncomment the OAuth HTML above plus these handlers.
+
+        $('btn-google').addEventListener('click', function () {
+            setLoading($('btn-google'), true);
+            MojoAuth.startGoogleLogin().catch(function (err) {
+                setLoading($('btn-google'), false);
+                showMessage(MojoAuth.getError(err) || 'Could not start Google sign-in.', 'error');
+            });
+        });
+
+        $('btn-apple').addEventListener('click', function () {
+            setLoading($('btn-apple'), true);
+            MojoAuth.startAppleLogin().catch(function (err) {
+                setLoading($('btn-apple'), false);
+                showMessage(MojoAuth.getError(err) || 'Could not start Apple sign-in.', 'error');
+            });
+        });
+
+        // Passkey
+        if (MojoAuth.isPasskeySupported()) {
+            $('btn-passkey').style.display = '';
+        }
+        $('btn-passkey').addEventListener('click', function () {
+            var btn = $('btn-passkey');
+            setLoading(btn, true);
+            hideMessage();
+            MojoAuth.loginWithPasskeyDiscoverable()
+                .then(onAuthSuccess)
+                .catch(function (err) {
+                    setLoading(btn, false);
+                    showMessage(MojoAuth.getError(err) || 'Passkey authentication failed.', 'error');
+                });
+        });
+
+        // =================================================================
+        // OPTIONAL: Forgot password + magic link handlers
+        // =================================================================
+        // Uncomment the forgot/reset/magic HTML views above plus these.
+
+        $('link-forgot').addEventListener('click', function () {
+            // showView('forgot');
+        });
+
+        $('link-magic').addEventListener('click', function () {
+            // showView('magic');
+        });
+        */
+
+    })();
+    </script>
+</body>
+</html>

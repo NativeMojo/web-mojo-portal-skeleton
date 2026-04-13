@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# Dev server config (auto-generated on first run)
+config/dev_server.conf
+
+# Claude Code local settings (personal permissions, not shared)
+.claude/settings.local.json
+
+# Secrets — never commit
+.env
+.env.*
+*.pem
+*.key

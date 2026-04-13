@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Portal Setup</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@latest/font/bootstrap-icons.min.css" />
+    <style>
+        body { background: #f8f9fa; }
+        .setup-card { max-width: 560px; margin: 60px auto; }
+        .step { display: none; }
+        .step.active { display: block; }
+        .status-icon { font-size: 3rem; }
+        .mode-btn { cursor: pointer; transition: all 0.15s; border: 2px solid transparent; }
+        .mode-btn:hover { border-color: #0d6efd; }
+        .mode-btn.selected { border-color: #0d6efd; background: #f0f6ff; }
+        #port-input { font-size: 1.4rem; text-align: center; letter-spacing: 2px; }
+        #api-url-input { font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="setup-card">
+            <div class="text-center mb-4">
+                <i class="bi bi-grid-1x2 display-4 text-primary"></i>
+                <h3 class="mt-2">Portal Setup</h3>
+                <p class="text-muted">Connect your portal to a django-mojo backend</p>
+            </div>
+
+            <!-- Step 1: Choose Mode -->
+            <div class="card shadow-sm step active" id="step-mode">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-3">
+                        <i class="bi bi-plug me-2 text-primary"></i>Backend Connection
+                    </h5>
+
+                    <div class="d-flex flex-column gap-3 mb-3">
+                        <div class="card mode-btn selected" id="mode-local" onclick="selectMode('local')">
+                            <div class="card-body py-3 px-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-pc-display fs-4 text-primary me-3"></i>
+                                    <div>
+                                        <div class="fw-semibold">Local Dev Server</div>
+                                        <div class="text-muted small">Connect to a django-mojo backend running on localhost</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card mode-btn" id="mode-remote" onclick="selectMode('remote')">
+                            <div class="card-body py-3 px-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-cloud fs-4 text-success me-3"></i>
+                                    <div>
+                                        <div class="fw-semibold">Production / Remote API</div>
+                                        <div class="text-muted small">Connect to a live API server for testing with real data</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Local options -->
+                    <div id="local-options">
+                        <label class="form-label text-muted small">Backend port</label>
+                        <div class="input-group input-group-lg mb-3">
+                            <span class="input-group-text">localhost:</span>
+                            <input type="number" id="port-input" class="form-control"
+                                   value="9009" min="1024" max="65535" />
+                        </div>
+                        <p class="text-muted small mb-3">
+                            Start with <code>./bin/run_dev_server</code> or <code>python bin/manage.py runserver PORT</code>
+                        </p>
+                    </div>
+
+                    <!-- Remote options -->
+                    <div id="remote-options" style="display: none;">
+                        <label class="form-label text-muted small">API base URL</label>
+                        <div class="input-group mb-3">
+                            <input type="url" id="api-url-input" class="form-control"
+                                   placeholder="https://api.example.com" />
+                        </div>
+                        <p class="text-muted small mb-3">
+                            <i class="bi bi-info-circle me-1"></i>
+                            The full base URL of your production API (without trailing <code>/api/</code>)
+                        </p>
+                    </div>
+
+                    <button class="btn btn-primary w-100" onclick="checkBackend()">
+                        <i class="bi bi-arrow-right me-2"></i>Check Connection
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Checking -->
+            <div class="card shadow-sm step" id="step-checking">
+                <div class="card-body p-4 text-center">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Checking...</span>
+                    </div>
+                    <h5>Checking <span id="check-target"></span>...</h5>
+                    <p class="text-muted">Trying to reach the API server</p>
+                </div>
+            </div>
+
+            <!-- Step 3a: Success -->
+            <div class="card shadow-sm step" id="step-success">
+                <div class="card-body p-4 text-center">
+                    <i class="bi bi-check-circle status-icon text-success mb-3"></i>
+                    <h5 class="text-success">Backend Connected!</h5>
+                    <p class="text-muted" id="success-detail"></p>
+                    <hr />
+                    <button class="btn btn-success w-100" onclick="saveAndLaunch()">
+                        <i class="bi bi-rocket-takeoff me-2"></i>Save &amp; Launch Portal
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3b: Failed -->
+            <div class="card shadow-sm step" id="step-failed">
+                <div class="card-body p-4 text-center">
+                    <i class="bi bi-exclamation-triangle status-icon text-warning mb-3"></i>
+                    <h5>Can't reach <span id="fail-target"></span></h5>
+
+                    <div id="fail-local-hint">
+                        <p class="text-muted">Make sure your django-mojo server is running:</p>
+                        <div class="bg-dark text-light rounded p-3 mb-3 text-start">
+                            <code class="text-light">cd your-django-project<br/>./bin/run_dev_server</code>
+                        </div>
+                    </div>
+                    <div id="fail-remote-hint" style="display: none;">
+                        <p class="text-muted">Check that the URL is correct and the server allows CORS from localhost.</p>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary flex-fill" onclick="showStep('step-mode')">
+                            <i class="bi bi-arrow-left me-1"></i>Back
+                        </button>
+                        <button class="btn btn-primary flex-fill" onclick="checkBackend()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Retry
+                        </button>
+                    </div>
+                    <hr />
+                    <button class="btn btn-link btn-sm text-muted" onclick="saveAndLaunch()">
+                        Save anyway and launch portal &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 4: Saving -->
+            <div class="card shadow-sm step" id="step-saving">
+                <div class="card-body p-4 text-center">
+                    <div class="spinner-border text-success mb-3" role="status"></div>
+                    <h5>Saving configuration...</h5>
+                    <p class="text-muted">Setting up your portal</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'local';
+
+        function showStep(id) {
+            document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function selectMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(el => el.classList.remove('selected'));
+            document.getElementById(`mode-${mode}`).classList.add('selected');
+            document.getElementById('local-options').style.display = mode === 'local' ? '' : 'none';
+            document.getElementById('remote-options').style.display = mode === 'remote' ? '' : 'none';
+        }
+
+        function getApiTarget() {
+            if (currentMode === 'local') {
+                const port = parseInt(document.getElementById('port-input').value, 10) || 9009;
+                return { mode: 'local', port, url: `http://localhost:${port}` };
+            } else {
+                let url = document.getElementById('api-url-input').value.trim();
+                // Strip trailing slash
+                url = url.replace(/\/+$/, '');
+                return { mode: 'remote', port: null, url };
+            }
+        }
+
+        function getDisplayTarget() {
+            const target = getApiTarget();
+            return target.mode === 'local' ? `localhost:${target.port}` : target.url;
+        }
+
+        async function checkBackend() {
+            const target = getApiTarget();
+            const display = getDisplayTarget();
+
+            if (target.mode === 'remote' && !target.url) {
+                document.getElementById('api-url-input').focus();
+                return;
+            }
+
+            document.getElementById('check-target').textContent = display;
+            document.getElementById('fail-target').textContent = display;
+            document.getElementById('fail-local-hint').style.display = target.mode === 'local' ? '' : 'none';
+            document.getElementById('fail-remote-hint').style.display = target.mode === 'remote' ? '' : 'none';
+            showStep('step-checking');
+
+            try {
+                const params = target.mode === 'local'
+                    ? `port=${target.port}`
+                    : `url=${encodeURIComponent(target.url)}`;
+                const resp = await fetch(`/__setup/check?${params}`);
+                const data = await resp.json();
+
+                if (data.reachable) {
+                    document.getElementById('success-detail').textContent =
+                        `Connected to ${data.server || 'django-mojo'} at ${display}`;
+                    showStep('step-success');
+                } else {
+                    showStep('step-failed');
+                }
+            } catch (err) {
+                showStep('step-failed');
+            }
+        }
+
+        async function saveAndLaunch() {
+            const target = getApiTarget();
+            showStep('step-saving');
+
+            try {
+                const payload = target.mode === 'local'
+                    ? { api_port: target.port, api_url: '' }
+                    : { api_port: 9009, api_url: target.url };
+
+                await fetch('/__setup/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                setTimeout(() => { window.location.href = '/portal/'; }, 500);
+            } catch (err) {
+                window.location.href = '/portal/';
+            }
+        }
+
+        // Keyboard shortcuts
+        document.getElementById('port-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') checkBackend();
+        });
+        document.getElementById('api-url-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') checkBackend();
+        });
+        document.getElementById('port-input').focus();
+    </script>
+</body>
+</html>
